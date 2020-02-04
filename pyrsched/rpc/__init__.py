@@ -32,6 +32,16 @@ class RPCScheduler(object):
         with open(self.CACHE_FILE, "r") as infile:
             self._previous_job_id = infile.read()
 
+    def _interpolate_job_id(self, job_id):
+        if job_id == "-":
+            # special case: use the stored job_id if it was stored before:
+            if not self.previous_job_id:
+                self.logger.error("No previous job id found.")
+                raise ValueError("No previous job id found.")
+            job_id = self.previous_job_id
+            self.logger.debug(f"using previous job_id {job_id}")
+        return job_id
+
     def connect(self):
         try:    
             self._conn = rpyc.connect(self.host, self.port, )
@@ -48,19 +58,19 @@ class RPCScheduler(object):
         return list(job_list)
 
     def add_job(self, pipeline_filename, interval):
+        self.logger.debug(f"add_job({pipeline_filename}, {interval})")
         job_id = self._conn.root.add_job(pipeline_filename, interval)
         self.previous_job_id = job_id
         return job_id
 
     def start_job(self, job_id):
         self.logger.debug(f"start_job({job_id})")
-        if job_id == "-":
-            # special case: use the stored job_id if it was stored before:
-            if not self.previous_job_id:
-                self.logger.error("No previous job id found.")
-                raise ValueError("No previous job id found.")
-            job_id = self.previous_job_id
-            self.logger.debug(f"using previous job_id {job_id}")
+        job_id = self._interpolate_job_id(job_id)
+        job = dict(self._conn.root.start_job(job_id))
+        return job 
 
-        res = self._conn.root.start_job(job_id)        
-        return res 
+    def stop_job(self, job_id):
+        self.logger.debug(f"stop_job({job_id})")
+        job_id = self._interpolate_job_id(job_id)
+        job = dict(self._conn.root.pause_job(job_id))
+        return job
