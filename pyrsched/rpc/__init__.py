@@ -1,7 +1,12 @@
 import logging
-import rpyc
+import os
+
 from pathlib import Path
-from copy import deepcopy
+from multiprocessing.managers import BaseManager
+from multiprocessing.context import AuthenticationError
+
+
+class QueueManager(BaseManager): pass
 
 class RPCScheduler(object):
     CACHE_FILE = Path.home() / ".pypyr-scheduler-cli"
@@ -43,34 +48,54 @@ class RPCScheduler(object):
         return job_id
 
     def connect(self):
-        try:    
-            self._conn = rpyc.connect(self.host, self.port, )
-        except ConnectionError as ce:
-            raise ce
+        authkey = os.environ.get("PYRSCHED_SECRET", "")
+        try:
+            QueueManager.register("scheduler")
+            m = QueueManager(address=(self.host, self.port), authkey=authkey.encode("utf-8"))
+            m.connect()
+            self._scheduler = m.scheduler()
+        except AuthenticationError as ae:
+            self.logger.error("Authentication error, are you using the correct shared secret (PYRSCHED_SECRET env variable)?")
+            self.logger.error(authkey)
+            raise ae
+
 
     @property
     def state(self):
-        state = self._conn.root.state()     
-        return {k:state[k] for k in state}  # make a local object
+        # print(self._scheduler, dir(self._scheduler))        
+        state = self._scheduler.state()  # self._conn.root.state()     
+        return state # {k:state[k] for k in state}  # make a local object
 
     def list_jobs(self):
-        job_list = self._conn.root.list_jobs()
-        return list(job_list)
+        job_list = self._scheduler.list_jobs()
+        return job_list
+
+    def get_job(self, job_id):
+        self.logger.debug(f"get_job({job_id})")
+        job_id = self._interpolate_job_id(job_id)
+        job = self._scheduler.get_job(job_id)
+        return job
 
     def add_job(self, pipeline_filename, interval):
         self.logger.debug(f"add_job({pipeline_filename}, {interval})")
-        job_id = self._conn.root.add_job(pipeline_filename, interval)
+        job_id = self._scheduler.add_job(pipeline_filename, interval)
         self.previous_job_id = job_id
         return job_id
+
+    def reschedule_job(self, job_id, interval):
+        self.logger.debug(f"rescheduler_job({job_id}, {interval})")
+        job_id = self._interpolate_job_id(job_id)
+        job = self._scheduler.reschedule_job(job_id, interval)
+        return job
 
     def start_job(self, job_id):
         self.logger.debug(f"start_job({job_id})")
         job_id = self._interpolate_job_id(job_id)
-        job = dict(self._conn.root.start_job(job_id))
+        job = self._scheduler.start_job(job_id)
         return job 
 
     def stop_job(self, job_id):
         self.logger.debug(f"stop_job({job_id})")
         job_id = self._interpolate_job_id(job_id)
-        job = dict(self._conn.root.pause_job(job_id))
+        job = dict(self._scheduler.pause_job(job_id))
         return job
