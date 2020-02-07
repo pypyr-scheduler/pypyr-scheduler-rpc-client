@@ -99,3 +99,9 @@ class RPCScheduler(object):
         job_id = self._interpolate_job_id(job_id)
         job = dict(self._scheduler.pause_job(job_id))
         return job
+    
+    def exposed_remove_job(self, job_id):
+        self.logger.debug(f"exposed_remove_job({job_id})")
+        job_id = self._interpolate_job_id(job_id)
+        job = self._scheduler.exposed_remove_job(job_id)
+        return job_id
