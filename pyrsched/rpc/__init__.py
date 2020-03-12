@@ -59,12 +59,10 @@ class RPCScheduler(object):
             self.logger.error(authkey)
             raise ae
 
-
     @property
-    def state(self):
-        # print(self._scheduler, dir(self._scheduler))        
-        state = self._scheduler.state()  # self._conn.root.state()     
-        return state # {k:state[k] for k in state}  # make a local object
+    def state(self):   
+        state = self._scheduler.state()  
+        return state 
 
     def list_jobs(self):
         job_list = self._scheduler.list_jobs()
