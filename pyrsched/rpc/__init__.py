@@ -34,8 +34,12 @@ class RPCScheduler(object):
             outfile.write(str(self._previous_job_id))
 
     def _load_previous_job_id(self):
-        with open(self.CACHE_FILE, "r") as infile:
-            self._previous_job_id = infile.read()
+        try:
+            with open(self.CACHE_FILE, "r") as infile:
+                self._previous_job_id = infile.read()
+        except FileNotFoundError:
+            self.CACHE_FILE.touch()
+            self._previous_job_id = "notset"
 
     def _interpolate_job_id(self, job_id):
         if job_id == "-":
