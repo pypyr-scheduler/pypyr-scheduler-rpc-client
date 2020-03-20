@@ -6,6 +6,9 @@ verify_ssl = true
 [dev-packages]
 pytest = "*"
 twine = "*"
+rich = "*"
+requests = "*"
+gitpython = "*"
 
 [packages]
 
@@ -14,3 +17,4 @@ python_version = "3.8"
 
 [scripts]
 tests = "pytest tests"
+release = "python scripts/release.py"

@@ -5,6 +5,9 @@ from pathlib import Path
 from multiprocessing.managers import BaseManager
 from multiprocessing.context import AuthenticationError
 
+NAME = "pypyr-scheduler-rpc-client"
+VERSION = "1.0.2"
+
 
 class QueueManager(BaseManager): pass
 
